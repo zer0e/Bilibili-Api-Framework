@@ -1,4 +1,4 @@
-import requests,qrcode
+import requests
 from urllib import parse
 import time,os
 from http.cookiejar import MozillaCookieJar
@@ -32,14 +32,28 @@ class bilibiliQRLogin():
         oauthKey = json_data['data']['oauthKey']
         qr_image_url = json_data['data']['url']
 
-        # print(oauthKey)
-        # print(qr_image_url)
-
-        qr_image = qrcode.make(qr_image_url)
-        qr_image.save('qr.png')
+        
+        self.save_qr_img(qr_image_url)
+        
+        
         
         return oauthKey
+    
+    def save_qr_img(self,qr_image_url):
+        try:
+            import qrcode
+            qr_image = qrcode.make(qr_image_url)
+            qr_image.save('qr.png')
+            return 
+        except ImportError:
+            print("本地没有qrcode库,采用api生成二维码")
 
+        try:
+            qr_image = requests.get('http://qr.topscan.com/api.php?text='+qr_image_url).content
+            with open('qr.png','wb') as f:
+                f.write(qr_image)
+        except:
+            raise Exception("网站api失效，无法生成二维码")
 
     def get_qr_scan_status(self,oauthKey):
         data = {
