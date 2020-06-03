@@ -1,19 +1,13 @@
 import websocket
 import threading
 import _thread as thread
-import json,time
+import time
+import json
 import logging
+import zlib
+import re
 from bilibiliQRLogin import bilibiliQRLogin
-
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
-# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-# ch = logging.StreamHandler()
-# ch.setFormatter(formatter)
-# ch.setLevel(logging.DEBUG)
-# logger.addHandler(ch)
-# logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-# logging.basicConfig(level=logging.DEBUG)
+from config import logger
 
 class bilibiliLiveWebSocket():
     def __init__(self,roomId):
@@ -31,6 +25,71 @@ class bilibiliLiveWebSocket():
         header.extend(data)
         return bytes(header)
     
+    @staticmethod
+    def pako_inflate(data):
+        decompress = zlib.decompressobj(15)
+        decompressed_data = decompress.decompress(data)
+        decompressed_data += decompress.flush()
+        return decompressed_data
+
+    def decode(self,blob):
+        buffer = bytearray(blob)
+        result = {}
+        result['packetLen'] = self.readInt(buffer,0,4)
+        result['headerLen'] = self.readInt(buffer,4,2)
+        result['version'] = self.readInt(buffer,6,2)
+        result['operation'] = self.readInt(buffer,8,4)
+        result['seq'] = self.readInt(buffer,12,4)
+        result['body'] = []
+        if result['operation'] == 5:
+            offset = 0
+            while offset < len(buffer):
+                packetLen = self.readInt(buffer,offset+0,4)
+                headerLen = 16
+                data = buffer[offset+headerLen:offset+packetLen]
+                if result['version'] == 2:
+                    body = self.pako_inflate(data)
+                else:
+                    body = data
+                
+                '''
+                如果前16位是无效的，则截去body的前16位
+                '''
+                if body[0] == 0:
+                    body = body[16:]
+
+                logger.debug(body)
+                body = str(body,encoding='utf-8')
+                '''
+                一个消息中有可能存在多个弹幕数据包，@lovelyyoshino文档中提出数据包长度等于弹幕数据包长度
+                经测试，数据包长度就是整个帧的长度，而不是弹幕数据包长度，因此无法通过offset来分割弹幕数据包
+                先通过cmd位置找出每个数据包，再使用正则表达式清洗数据
+                太菜了直接用正则提取不出来...
+                '''
+                # logger.debug("数据包大小：" + str(packetLen))
+                # logger.debug("帧大小：" + str(len(buffer)))
+                logger.debug("原始body(str)：" + body)
+                index_list = [i.start() for i in re.finditer('{"cmd', body)]
+                r = []
+                for i in range(len(index_list)-1):
+                    start = index_list[i]
+                    end = index_list[i+1]
+                    r.append(body[start:end])
+                r.append(body[index_list[-1]:])
+                # logger.warning(r)
+                for item in r:
+                    wash_item = re.findall(r'\{"cmd.*\}+',item)[0]
+                    result['body'].append(json.loads(wash_item,encoding='utf-8'))
+                
+                
+                offset += packetLen
+        elif result['operation'] == 3:
+            result['body'] = {
+                'count':self.readInt(buffer,16,4)
+            }
+        
+        return result
+    
     def writeInt(self,buffer,start,data_len,value):
         i = 0
         while i < data_len:
@@ -45,15 +104,18 @@ class bilibiliLiveWebSocket():
     def send_heartbeat(self):
         def heartbeat():
             if self.ws:
-                logging.debug("send heartbeat")
-                self.ws.send(self.encode('',2))
-                threading.Timer(30.0,heartbeat).start()
+                logger.debug("send heartbeat")
+                try:
+                    self.ws.send(self.encode('',2))
+                    threading.Timer(30.0,heartbeat).start()
+                except:
+                    pass
         threading.Timer(30.0,heartbeat).start()
         
         
 
     def on_open(self):
-        logging.debug("### on open ###")
+        logger.debug("### on open ###")
         def run(*args):
             self.ws.send(self.encode(json.dumps({
                 "roomid": self.roomId
@@ -63,13 +125,16 @@ class bilibiliLiveWebSocket():
         
     
     def on_message(self, message):
-        logging.debug("### on message ###")
-        print(message)
+        logger.debug("get message")
+        packet = self.decode(message)
+        logger.info(packet)
+        logger.debug(packet['body'])
+
     def on_close(self):
-        logging.debug("### closed ###")
+        logger.debug("### closed ###")
     def on_error(self, error):
-        logging.debug("####### on_error #######")
-        print(error)
+        logger.debug("####### on_error #######")
+        logger.error(error)
     def start(self):
         self.ws = websocket.WebSocketApp(self.ws_url,
                                on_message=self.on_message,
@@ -82,6 +147,10 @@ class bilibiliLiveWebSocket():
         self.ws = None
 
 if __name__ == "__main__":
-    ws = bilibiliLiveWebSocket(5160066)
+    ws = bilibiliLiveWebSocket(17778)
     ws.start()
+    # test = ws.encode("1",7)
+    # print(test)
+    # ws.decode(test)
+
     
