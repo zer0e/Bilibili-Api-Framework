@@ -3,7 +3,7 @@ from urllib import parse
 import time,os
 from http.cookiejar import MozillaCookieJar
 from PIL import Image
-
+from config import logger
 
 class bilibiliQRLogin():
     def __init__(self):
@@ -46,13 +46,14 @@ class bilibiliQRLogin():
             qr_image.save('qr.png')
             return 
         except ImportError:
-            print("本地没有qrcode库,采用api生成二维码")
+            logger.waring("本地没有qrcode库,采用api生成二维码")
 
         try:
             qr_image = requests.get('http://qr.topscan.com/api.php?text='+qr_image_url).content
             with open('qr.png','wb') as f:
                 f.write(qr_image)
         except:
+            logger.error("网站api失效，无法生成二维码")
             raise Exception("网站api失效，无法生成二维码")
 
     def get_qr_scan_status(self,oauthKey):
@@ -65,9 +66,6 @@ class bilibiliQRLogin():
         h = session.post(self.qr_login_info_url,headers=headers,data = data)
         status = h.json()['status']
         if status:
-            # print(h.text)
-            # print(h.headers)
-            # print(session.cookies)
             return status,session
         else:
             return status,None
@@ -86,21 +84,21 @@ class bilibiliQRLogin():
         if self.login_session and self.check_expire():
             return self.login_session
         oauthKey = self.qr_scan()
-        print("请扫描二维码")
+        logger.info("请扫描二维码")
         img = Image.open(self.qr_path)
         img.show()
         for i in range(self.times):
             time.sleep(10)
             status,session = self.get_qr_scan_status(oauthKey)
             if not status:
-                print("等待二维码扫描")
+                logger.info("等待二维码扫描")
             else:
-                print("登录成功")
+                logger.info("登录成功")
                 self.login_session = session
                 self.save_cookie_to_local()
                 return session
             if i == self.times - 1:
-                print('未扫码超时')
+                logger.error('未扫码超时')
                 raise TimeoutError("登录超时")
         return None
 
@@ -117,24 +115,9 @@ class bilibiliQRLogin():
         else:
             pass
     
-    # def test(self):
-    #     h = self.login_session.get(self.user_info_url)
-    #     print(h.text)
-
-
-
-
-
-
-
-
-    
-
 
 if __name__ == "__main__":
-    pass
-    # l = bilibiliQRLogin()
-    # l.test()
+    l = bilibiliQRLogin()
     
     
 
