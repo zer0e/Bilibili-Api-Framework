@@ -59,11 +59,11 @@ class bilibiliLiveWebSocket():
                     body = body[16:]
 
                 logger.debug(body)
-                body = str(body,encoding='utf-8')
+                body = str(body,encoding='utf-8',errors='ignore')
                 '''
                 一个消息中有可能存在多个弹幕数据包，@lovelyyoshino文档中提出数据包长度等于弹幕数据包长度
                 经测试，数据包长度就是整个帧的长度，而不是弹幕数据包长度，因此无法通过offset来分割弹幕数据包
-                先通过cmd位置找出每个数据包，再使用正则表达式清洗数据
+                提取方案为：先通过cmd位置找出每个数据包，截取之后再使用正则表达式清洗数据
                 太菜了直接用正则提取不出来...
                 '''
                 # logger.debug("数据包大小：" + str(packetLen))
@@ -111,6 +111,9 @@ class bilibiliLiveWebSocket():
                 except:
                     pass
         threading.Timer(30.0,heartbeat).start()
+
+    def handlePacket(self,packet):
+        pass
         
         
 
@@ -128,7 +131,7 @@ class bilibiliLiveWebSocket():
         logger.debug("get message")
         packet = self.decode(message)
         logger.info(packet)
-        logger.debug(packet['body'])
+        self.handlePacket(packet)
 
     def on_close(self):
         logger.debug("### closed ###")
@@ -147,10 +150,7 @@ class bilibiliLiveWebSocket():
         self.ws = None
 
 if __name__ == "__main__":
-    ws = bilibiliLiveWebSocket(17778)
+    ws = bilibiliLiveWebSocket(3742025)
     ws.start()
-    # test = ws.encode("1",7)
-    # print(test)
-    # ws.decode(test)
 
     
