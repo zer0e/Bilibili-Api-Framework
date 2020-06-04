@@ -11,5 +11,6 @@
 本框架并没有对json数据进行处理，如果需要处理弹幕数据，请重写handlePacket方法进行处理。
 
 ## 项目依赖
+requests  
 websocket-client  
 qrcode(可选)  
