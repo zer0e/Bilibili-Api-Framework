@@ -1,6 +1,7 @@
 from bilibiliQRLogin import bilibiliQRLogin
 from config import logger
 import time
+from functools import cmp_to_key
 
 
 class bilibiliAutoSendGift(bilibiliQRLogin):
@@ -25,14 +26,18 @@ class bilibiliAutoSendGift(bilibiliQRLogin):
             newFansMedal['roomId'] = medal['roomid']
             newFansMedalList.append(newFansMedal)
             # logger.debug(newFansMedal)
+        # 按照勋章等级排列
+        newFansMedalList.sort(key=cmp_to_key(lambda a,b: b['level'] - a['level']))
         return newFansMedalList
     
-    def get_gift_list(self):
+    def get_gift_list(self,gitf_id=1):
+        # 1为辣条 30607为小心心
         gift_list = self.get_login_session().get(self.get_gift_list_url).json()['data']['list']
         new_gift_list = {'allNum':0,'data': []}
         giftTemplate = {'bag_id':'','gift_id':'','gift_name':'','gift_num':'','expire_at':''}
         for gift in gift_list:
-
+            if gift['gift_id'] != gitf_id:
+                continue
             new_gift = giftTemplate.copy()
             for key in new_gift:
                 new_gift[key] = gift[key]
@@ -41,13 +46,16 @@ class bilibiliAutoSendGift(bilibiliQRLogin):
             # logger.debug(new_gift)
         # 过期时间从小到大排列
         # 事实上官方都排序好了
-        from functools import cmp_to_key
         new_gift_list['data'].sort(key=cmp_to_key(lambda a,b: a['expire_at'] - b['expire_at']))
         # logger.debug(new_gift_list)
         return new_gift_list
         
     def send_latiao_to_medal(self):
         medal_list = self.get_medal_list()
+        gift_list = self.get_gift_list()
+        allNum = gift_list['allNum']
+        logger.info("当前粉丝勋章有：" + str(medal_list))
+        logger.info("当前背包辣条数量：%s",allNum)
         bili_jct = self.get_cookie('bili_jct')
         send_Template = {
             'uid': self.get_cookie('DedeUserID'),
@@ -59,6 +67,12 @@ class bilibiliAutoSendGift(bilibiliQRLogin):
             'storm_beat_id': '0'
         }
         # logger.info(gift_list)
+        logger.info("请选择赠送方式：")
+        logger.info("1.按粉丝牌等级依次赠送   2.选择粉丝牌等级前两名的主播赠送")
+        method = input()
+        if method == "2":
+            medal_list = medal_list[:2]
+        logger.info("当前赠送列表为:" + str(medal_list))
         for medal in medal_list:
             logger.info("将在10秒后开始赠送礼物...")
             time.sleep(10)
@@ -91,7 +105,9 @@ class bilibiliAutoSendGift(bilibiliQRLogin):
                     # logger.debug(msg)
                     # time.sleep(1000)
                     if msg['msg'] == 'success':
-                        logger.info("成功赠送%s个辣条")
+                        logger.info("成功赠送%s个辣条",send_gift['gift_num'])
+                        if not allNum or not diff:
+                            break
                         logger.info("5秒后开始下一轮送礼")
                         time.sleep(5)
                         continue
@@ -100,25 +116,19 @@ class bilibiliAutoSendGift(bilibiliQRLogin):
                         logger.error(msg)
                         raise Exception("赠送错误")
             else:
-                logger.info("主播：%s的今日辣条赠送已达上限",name)
+                logger.info("主播：%s 今日辣条赠送已达上限",name)
             
             if diff:
                 logger.info("背包辣条数量不足，自动跳过剩余主播")
                 break
             else:
-                logger.info("主播：%s辣条赠送完毕",name)
+                logger.info("主播：%s 辣条赠送完毕",name)
         logger.info("结束自动赠送")
-            
 
-        
-        
-
-        
-        
-
-    
 
 if __name__ == "__main__":
     q = bilibiliAutoSendGift()
+    # logger.debug(q.get_medal_list())
+    
     q.send_latiao_to_medal()
 
