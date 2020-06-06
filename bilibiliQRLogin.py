@@ -32,11 +32,8 @@ class bilibiliQRLogin():
         oauthKey = json_data['data']['oauthKey']
         qr_image_url = json_data['data']['url']
 
-        
         self.save_qr_img(qr_image_url)
-        
-        
-        
+
         return oauthKey
     
     def save_qr_img(self,qr_image_url):
@@ -114,6 +111,13 @@ class bilibiliQRLogin():
             self.login_session = session
         else:
             pass
+    
+    def get_cookie(self,name):
+        cookies = self.login_session.cookies
+        newcookies = {}
+        for cookie in cookies:
+            newcookies[cookie.name] = cookie.value
+        return newcookies[name] if name in newcookies else None
     
 
 if __name__ == "__main__":
