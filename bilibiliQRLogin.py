@@ -13,7 +13,7 @@ class bilibiliQRLogin():
         }
         self.qr_login_url = 'http://passport.bilibili.com/qrcode/getLoginUrl'
         self.qr_login_info_url = 'http://passport.bilibili.com/qrcode/getLoginInfo'
-        self.user_info_url = 'http://account.bilibili.com/home/userInfo'
+        self.user_info_url = 'https://api.bilibili.com/x/space/myinfo'
         self.times = 3 # 超时时间 times*10 秒
         self.cookie_path = './cookie.txt'
         self.qr_path = './qr.png'

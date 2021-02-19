@@ -5,7 +5,7 @@ class bilibiliUser(bilibiliQRLogin):
     def __init__(self):
         super().__init__()
         self.all_user_info_url = 'http://api.bilibili.com/nav'
-        self.sample_user_info_url = 'http://account.bilibili.com/home/userInfo'
+        self.sample_user_info_url = 'https://api.bilibili.com/x/space/myinfo'
         self.get_location_url = 'http://api.bilibili.com/x/web-interface/zone'
         
 
