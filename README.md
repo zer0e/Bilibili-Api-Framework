@@ -13,4 +13,4 @@
 ## 项目依赖
 requests  
 websocket-client  
-qrcode(可选)  
+qrcode  
