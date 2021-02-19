@@ -6,6 +6,7 @@
 *.txt
 *.png
 *.log
+bilibiliAutoSendGift.py
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
